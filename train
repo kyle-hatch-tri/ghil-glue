@@ -1,0 +1,101 @@
+
+echo "PYTHONPATH: $PYTHONPATH"
+
+echo "WANDB_API_KEY: $WANDB_API_KEY"
+echo "WANDB_ENTITY: $WANDB_ENTITY"
+echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
+echo "AGENT_CONFIG_STRING: $AGENT_CONFIG_STRING"
+echo "NUM_EVAL_SEQUENCES: $NUM_EVAL_SEQUENCES"
+echo "DIFFUSION_MODEL_CHECKPOINT_PATH: $DIFFUSION_MODEL_CHECKPOINT_PATH"
+echo "HIGH_LEVEL_VF_CHECKPOINT_PATH: $HIGH_LEVEL_VF_CHECKPOINT_PATH" # not actually used
+echo "SAVE_TO_S3: $SAVE_TO_S3"
+echo "S3_SAVE_URI: $S3_SAVE_URI"
+echo "NUM_DENOISING_STEPS: $NUM_DENOISING_STEPS"
+echo "NUM_SAMPLES: $NUM_SAMPLES"
+echo "EP_LEN: $EP_LEN"
+echo "NUM_SAMPLES: $NUM_SAMPLES"
+echo "SUBGOAL_MAX: $SUBGOAL_MAX"
+echo "FLAT_POLICY: $FLAT_POLICY"
+echo "FILTERING_METHOD: $FILTERING_METHOD"
+echo "UNIPI: $UNIPI"
+echo "USE_TEMPORAL_ENSEMBLING: $USE_TEMPORAL_ENSEMBLING"
+
+
+mkdir -p "/opt/ml/input/data/training/<USER>/cache/hub "
+aws s3 sync "s3://<s3_uri>/huggingface_cache" "/opt/ml/input/data/training/<USER>/cache/hub"
+export HF_HOME="/opt/ml/input/data/training/<USER>/cache"
+
+if [ "$UNIPI" = "1" ]; then
+    # export XLA_PYTHON_CLIENT_PREALLOCATE=false
+    export XLA_PYTHON_CLIENT_MEM_FRACTION=.1
+fi
+echo "XLA_PYTHON_CLIENT_PREALLOCATE: $XLA_PYTHON_CLIENT_PREALLOCATE"
+echo "XLA_PYTHON_CLIENT_MEM_FRACTION: $XLA_PYTHON_CLIENT_MEM_FRACTION"
+
+export DIFFUSION_MODEL_CHECKPOINT="/opt/ml/input/data/high_level"
+echo "DIFFUSION_MODEL_CHECKPOINT: $DIFFUSION_MODEL_CHECKPOINT"
+
+export HIGH_LEVEL_VF_CHECKPOINT="/opt/ml/input/data/high_level_vf"
+echo "HIGH_LEVEL_VF_CHECKPOINT: $HIGH_LEVEL_VF_CHECKPOINT"
+
+num_gpus=$(nvidia-smi -L | wc -l)
+echo "NUM_LOW_LEVEL_CHECKPOINTS: $NUM_LOW_LEVEL_CHECKPOINTS"
+echo "num_gpus: $num_gpus"
+
+if [[ ( "$NUM_LOW_LEVEL_CHECKPOINTS" > $num_gpus ) ]]; then
+    echo "Too many seeds"
+        exit 125
+fi 
+
+current_timestamp=$(date +"%Y_%m_%d_%H_%M_%S")
+mkdir -p "/opt/ml/input/data/training/<USER>/<path_to_results>/stdouts/$current_timestamp"
+
+mkdir -p "/opt/ml/input/data/training/<USER>/<path_to_checkpoints>/DynamiCrafter/training_256_v1.0/2024.09.02_17.41.42/checkpoints"
+aws s3 sync "s3://<s3_uri>/<path_to_checkpoints>/DynamiCrafter/training_256_v1.0/2024.09.02_17.41.42/checkpoints" "/opt/ml/input/data/training/<USER>/<path_to_checkpoints>/DynamiCrafter/training_256_v1.0/2024.09.02_17.41.42/checkpoints"
+
+export UNIPI_MODEL_CONFIG=dynamicrafer_configs/inference_256_v1.0.yaml
+export UNIPI_MODEL_CHECKPOINT=/opt/ml/input/data/training/<USER>/<path_to_checkpoints>/DynamiCrafter/training_256_v1.0/2024.09.02_17.41.42/checkpoints/epoch=173-step=99000.ckpt
+
+
+for ((i=0; i<$NUM_LOW_LEVEL_CHECKPOINTS; i++)); do
+
+    if [ "$UNIPI" = "1" ]; then
+        export CUDA_VISIBLE_DEVICES="$((2*i)),$((2*i+1))"
+    else
+        export CUDA_VISIBLE_DEVICES=$i 
+    fi
+    echo "[$i] CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
+    
+
+    var="GC_POLICY_CHECKPOINT_PATH_$i"
+    low_level_checkpoint="${!var}"
+    
+    
+    IFS='|' read -r -a low_level_checkpoint_split <<< $low_level_checkpoint
+    gc_policy_checkpoint=${low_level_checkpoint_split[0]}
+    gc_policy_checkpoint_path=${low_level_checkpoint_split[1]}
+
+    
+    export GC_POLICY_CHECKPOINT="/opt/ml/input/data/$gc_policy_checkpoint"
+
+    python3 -u evaluate_policy_subgoal_diffusion.py \
+    --agent_config_string $AGENT_CONFIG_STRING \
+    --vf_agent_config_string $VF_AGENT_CONFIG_STRING \
+    --dataset_path mini_dataset \
+    --diffusion_model_checkpoint_path $DIFFUSION_MODEL_CHECKPOINT_PATH \
+    --gc_policy_checkpoint_path $gc_policy_checkpoint_path \
+    --diffusion_model_framework jax \
+    --save_to_s3 $SAVE_TO_S3 \
+    --s3_save_uri $S3_SAVE_URI \
+    --use_temporal_ensembling $USE_TEMPORAL_ENSEMBLING \
+    --num_denoising_steps $NUM_DENOISING_STEPS \
+    --num_samples $NUM_SAMPLES \
+    --flat_policy $FLAT_POLICY \
+    --filtering_method $FILTERING_METHOD \
+    --unipi $UNIPI \
+    2>&1 | tee "/opt/ml/input/data/training/<USER>/<path_to_results>/stdouts/$current_timestamp/stdout_and_sterr_$i.txt" &
+done
+
+wait
+
+aws s3 sync "/opt/ml/input/data/training/<USER>/<path_to_results>/stdouts/$current_timestamp" "$S3_SAVE_URI/stdouts/$current_timestamp"

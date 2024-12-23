@@ -1,0 +1,35 @@
+high_level_policy_s3_uri: s3://<s3_uri>/<path_to_checkpoints>/susie_test/public_model/checkpoint_only # unused
+high_level_vf_s3_uri: s3://<s3_uri>/<path_to_checkpoints>/susie_low_level/calvinlcbc/lcgcprogressvf/auggoaldiff/seed_0/20240510_005751/checkpoint_100000 # unused
+low_level_policy:
+  policy1:
+    s3_uri: "s3://<s3_uri>/<path_to_checkpoints>/susie_low_level/calvin/gcdiffusion/auggoaldiff"
+    seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    checkpoints:
+    - 150_000
+launch_args:
+  local: False
+  instance_type: ml.p4d.24xlarge
+  debug: 0
+  save_to_s3: 1 
+  s3_save_uri: "s3://<s3_uri>/<path_to_results>/eval-outputs"
+  user: <user>
+  base_job_name: calvin-sim
+  input_source: s3
+  wandb_api_key: <wandb_api_key>
+  instance_count: 1
+eval_args:
+  agent_config_string: calvin_gcdiffusion_noactnorm-sagemaker-auggoaldiff
+  vf_agent_config_string: calvinlcbc_lcgcprogressvf_noactnorm-sagemaker-auggoaldiff 
+  num_denoising_steps: 50 
+  num_samples: 4
+  num_eval_sequences: 100 
+  ep_len: 360 
+  subgoal_max: 1
+  flat_policy: 0
+  filtering_method: high_level_video_vf
+  unipi: 1
+  use_temporal_ensembling: 0

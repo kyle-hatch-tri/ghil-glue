@@ -1,0 +1,123 @@
+# calvin_env/tacto/requirements/requirements.txt
+numpy >= 1.18.5
+pybullet >= 2.8.1
+matplotlib >= 3.1.3
+opencv-python >= 3.4.2.17
+omegaconf >= 2.0.6
+pyrender >= 0.1.43
+hydra-core >= 1.0.6
+urdfpy >= 0.0.22
+scipy
+
+# Need a specific version of PyOpenGL (forked & modified by mmatl) for pyrender
+# to run headlessly using OSMesa. Otherwise, we will get python ImportError:
+# `cannot import name 'OSMesaCreateContextAttribs'`.
+pyopengl @ git+https://github.com/mmatl/pyopengl.git@76d1261adee2d3fd99b418e75b0416bb7d2865e6
+
+
+# calvin_env/requirements.txt /tmp/requirements.txt
+cloudpickle
+gitpython
+gym
+hydra-core
+hydra-colorlog
+matplotlib
+numba
+numpy
+numpy-quaternion
+omegaconf
+opencv-python
+pandas
+pybullet
+scipy
+rich
+
+
+# calvin_models/requirements.txt /tmp/requirements.txt
+cmake
+wheel
+numpy>1.2
+hydra-core==1.1.1
+hydra-colorlog
+matplotlib
+opencv-python
+omegaconf
+plotly
+# pyhash
+pytorch-lightning==1.8.6
+lightning_lite
+# torch==1.13.1
+torch==2.1.2
+torchvision
+# pytorch-lightning
+# lightning_lite
+# torch
+# torchvision
+# MulticoreTSNE
+gitpython
+scipy
+sentence-transformers
+setuptools==57.5.0
+gym
+moviepy
+tqdm
+termcolor
+wandb
+
+
+# requirements_dev.txt
+black
+flake8
+isort
+pre-commit
+mypy
+pytest
+pytest-cov
+
+
+
+# from bridge v2
+ml_collections >= 0.1.0
+einops >= 0.6.1
+distrax==0.1.2
+flax==0.7.0
+einops==0.6.1
+jax==0.4.11
+jaxlib==0.4.11
+optax==0.1.5
+diffusers==0.18.2
+ml-dtypes==0.2.0
+ipdb 
+
+# tensorflow[and-cuda]==2.14
+# tensorflow==2.15 
+# tensorflow_datasets>=4.9.2 
+# tqdm-multiprocess==0.0.11 
+# pre-commit==3.3.3 
+# typing_extensions
+tensorflow
+tensorflow_hub==0.15.0
+tensorflow_text==2.13.0
+
+# sagemaker
+
+awswrangler
+smart_open
+
+# LIBERO
+easydict==1.9 
+thop==0.1.1-2209072238
+robosuite
+bddl==1.0.1
+future==0.18.2 
+
+# diffusers==0.18.2
+# sentence-transformers
+
+pyspng
+natsort
+av  
+gdown
+
+
+diffusers
