@@ -154,3 +154,4 @@ random_util_scripts/instruct_pix2pix_images/
 
 .wandb*
 .hydra 
+.flake8
